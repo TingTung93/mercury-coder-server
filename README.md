@@ -146,4 +146,4 @@ The server supports various code-related tools that can be invoked through the M
 
 ## License
 
-Proprietary - All rights reserved.
+Fair Use Non-Commercial - This software may be used for non-commercial purposes only.
