@@ -2,22 +2,45 @@
 export const API_CONFIG = {
   URL: process.env.MERCURY_API_URL || "https://api.inceptionlabs.ai/v1/chat/completions",
   MODEL: process.env.MERCURY_MODEL || "mercury-coder-small",
-  KEY: process.env.MERCURY_API_KEY,
   MAX_TOKENS: 2000,
+  KEY: process.env.MERCURY_API_KEY,
 } as const;
+
+// Validate required environment variables
+const requiredEnvVars = {
+  MERCURY_API_KEY: 'API authentication key',
+  MERCURY_API_URL: 'API endpoint URL',
+} as const;
+
+// Check for missing environment variables
+const missingVars = Object.entries(requiredEnvVars)
+  .filter(([key]) => !process.env[key])
+  .map(([key, desc]) => `${key} (${desc})`);
+
+if (missingVars.length > 0) {
+  throw new Error(
+    `Missing required environment variables:\n${missingVars.join('\n')}\n` +
+    'Please ensure all required environment variables are properly configured.'
+  );
+}
 
 // Request Configuration
 export const REQUEST_CONFIG = {
-  MAX_CODE_SIZE: 2_000_000, // Increased to 2MB
-  MAX_REQUEST_SIZE: 4_000_000, // Increased to 4MB
-  COMPRESSION_THRESHOLD: 10_000,
-  CHUNK_SIZE: 100_000, // Increased chunk size
+  // Size limits (in bytes unless specified)
+  MAX_CODE_SIZE: 2_000_000, // 2MB max code size
+  MAX_REQUEST_SIZE: 4_000_000, // 4MB max request size
+  MAX_FILE_SIZE: 5_000_000, // 5MB max file size
+  
+  // Processing thresholds
+  COMPRESSION_THRESHOLD: 10_000, // Start compression above 10KB
+  CHUNK_SIZE: 100_000, // 100KB chunks for processing
+  MAX_CONTEXT_LENGTH: 10_000, // Maximum tokens in context
+  
+  // Request handling
   MAX_RETRIES: 3,
-  INITIAL_RETRY_DELAY: 1000,
-  MAX_RETRY_DELAY: 10000,
-  REQUEST_TIMEOUT: 60000, // Increased timeout
-  MAX_FILE_SIZE: 5_000_000, // New: Max file size (5MB)
-  MAX_CONTEXT_LENGTH: 10_000, // New: Max context tokens
+  INITIAL_RETRY_DELAY: 1000, // 1 second
+  MAX_RETRY_DELAY: 10000, // 10 seconds
+  REQUEST_TIMEOUT: 60000, // 60 seconds
 } as const;
 
 // Server Configuration
@@ -29,7 +52,7 @@ export const SERVER_CONFIG = {
 // Cache Configuration
 export const CACHE_CONFIG = {
   ENABLED: true,
-  TTL: 1800, // 30 minutes in seconds
+  TTL: 1800, // Cache expiration time in seconds (30 minutes)
   MAX_SIZE: 100 // Maximum number of cached responses
 } as const;
 
@@ -37,8 +60,9 @@ export const CACHE_CONFIG = {
 const codeBaseProperties = {
   code: { type: "string", description: "The code to process" },
   language: { type: "string", description: "Programming language of the code" }
-};
-const codeBaseRequired = ["code", "language"];
+} as const;
+
+const codeBaseRequired = ["code", "language"] as const;
 
 // Tool Schemas
 export const TOOL_SCHEMAS = {

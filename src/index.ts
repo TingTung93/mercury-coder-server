@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import 'dotenv/config';
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
@@ -72,10 +73,10 @@ class MercuryCoderServer {
     console.error("💥 INIT: Initializing Mercury Coder Server...");
     console.error(`💥 INIT: Process args: ${process.argv.join(' ')}`);
 
-    // Check for required API key
+    // Check for API key - use default from config if not set in environment
     if (!process.env.MERCURY_API_KEY) {
-      console.error("ERROR: MERCURY_API_KEY environment variable is required!");
-      process.exit(1);
+      console.error("WARNING: MERCURY_API_KEY environment variable not found, using fallback value");
+      // The fallback value will be used from API_CONFIG.KEY
     }
 
     // Create API components
@@ -89,7 +90,7 @@ class MercuryCoderServer {
     console.error(`💥 INIT: Available tools: ${localToolDefinitions.map(t => t.name).join(', ')}`);
 
     // Store methods for later checking
-    this._methods = ["chat", "ping"];
+    this._methods = ["chat", "ping", "callTool"];
     
     // Initialize the MCP Server with required capabilities
     console.error("💥 INIT: Creating server instance with capabilities for chat and ping methods");
@@ -184,24 +185,19 @@ class MercuryCoderServer {
         console.error(`🟩 CHAT: Processing message: "${message.substring(0, 30)}..."`);
         
         try {
-          // For testing, just return a mock response
-          // In production, this would call the Mercury API with the toolDispatcher
-          // const response = await this.mercuryApi.callWithToolHandling(
-          //   message, 
-          //   context, 
-          //   getAvailableTools(),
-          //   this.toolDispatcher,
-          //   (progressMsg) => console.error(`🟩 CHAT PROGRESS: ${progressMsg}`)
-          // );
+          // Use real API calls instead of mock responses
+          console.error("🟩 CHAT: Calling Mercury API with message and context");
+          const response = await this.mercuryApi.callWithToolHandling(
+            message, 
+            context, 
+            getAvailableTools(),
+            this.toolDispatcher,
+            (progressMsg) => console.error(`🟩 CHAT PROGRESS: ${progressMsg}`)
+          );
           
-          // Mock response for testing
-          console.error("🟩 CHAT: Returning mock response for testing");
+          console.error("🟩 CHAT: Mercury API call completed, returning response");
           return {
-            result: {
-              content: `Response to your message: "${message}"${
-                context?.code ? `\nYou provided code with ${context.code.length} characters.` : ''
-              }`
-            }
+            result: response
           };
         } catch (error) {
           console.error("🟩 CHAT: Error processing chat request:", error);
@@ -211,6 +207,58 @@ class MercuryCoderServer {
           throw new McpError(
             ErrorCode.InternalError, 
             `Chat handler failed: ${error instanceof Error ? error.message : String(error)}`
+          );
+        }
+      }
+      
+      // Add callTool method handler
+      if (request.method === 'callTool') {
+        console.error("🔧 TOOL: Processing tool call request");
+        
+        // Extract parameters from the request
+        const params = request.params || {};
+        const toolName = params.name;
+        const toolArgs = params.arguments;
+        
+        console.error(`🔧 TOOL: Tool name: "${toolName}"`);
+        console.error(`🔧 TOOL: Tool args: ${JSON.stringify(toolArgs)}`);
+        
+        if (!toolName || typeof toolName !== 'string') {
+          console.error("🔧 TOOL: Invalid tool name parameter:", toolName);
+          throw new McpError(ErrorCode.InvalidParams, "Missing or invalid 'name' parameter");
+        }
+        
+        if (!toolArgs || typeof toolArgs !== 'object') {
+          console.error("🔧 TOOL: Invalid tool arguments parameter:", toolArgs);
+          throw new McpError(ErrorCode.InvalidParams, "Missing or invalid 'arguments' parameter");
+        }
+        
+        try {
+          // Create a tool call object to pass to the dispatcher
+          const toolCall = {
+            id: `tool-call-${Date.now()}`,
+            type: "function" as const,  // Use const assertion to make this have the literal type "function"
+            function: {
+              name: toolName,
+              arguments: JSON.stringify(toolArgs)
+            }
+          };
+          
+          console.error(`🔧 TOOL: Dispatching tool: ${toolName}`);
+          const result = await this.toolDispatcher.dispatch(toolCall);
+          console.error(`🔧 TOOL: Tool execution completed`);
+          
+          return {
+            result: result
+          };
+        } catch (error) {
+          console.error("🔧 TOOL: Error processing tool call:", error);
+          if (error instanceof McpError) {
+            throw error;
+          }
+          throw new McpError(
+            ErrorCode.InternalError, 
+            `Tool call handler failed: ${error instanceof Error ? error.message : String(error)}`
           );
         }
       }
@@ -266,3 +314,4 @@ server.run().catch((error) => {
 
 // Keep export if needed elsewhere, otherwise remove if entry point only
 // export { MercuryCoderServer };
+

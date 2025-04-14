@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { promises as fs } from "fs";
 import path from "path";
-import { ZodValidatedTool, ToolDefinition } from "./index.js";
+import { ZodValidatedTool, ToolDefinition } from "./baseTool.js";
 import { McpError, ErrorCode } from "../types/index.js";
 import { REQUEST_CONFIG } from "../config/index.js"; // For MAX_FILE_SIZE
 
@@ -78,4 +78,4 @@ export class ReadFileTool extends ZodValidatedTool<typeof ReadFileInputSchema> {
             throw new McpError(ErrorCode.InternalError, `Failed to read file: ${error instanceof Error ? error.message : String(error)}`);
         }
     }
-} 
+}

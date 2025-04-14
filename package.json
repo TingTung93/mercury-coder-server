@@ -20,8 +20,8 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "inspector": "npx @modelcontextprotocol/inspector build/index.js",
-    "start": "node build/index.js",
-    "start-new": "node build/server.js"
+    "start": "node build/src/index.js",
+    "start-new": "node build/src/server.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "0.6.0",
