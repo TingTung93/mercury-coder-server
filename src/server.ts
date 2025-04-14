@@ -26,7 +26,7 @@ const toolDispatcher = new ToolDispatcher();
 const localTools: LocalTool[] = getAvailableTools();
 const localToolDefinitions = localTools.map((tool: LocalTool) => tool.getDefinition());
 
-console.error(`Available tools: ${localToolDefinitions.map(t => t.name).join(', ')}`);
+console.error(`Available tools (${localToolDefinitions.length}): ${localToolDefinitions.map(t => t.name).join(', ')}`);
 
 // Create the MCP Server with both chat and ping methods
 const server = new Server(

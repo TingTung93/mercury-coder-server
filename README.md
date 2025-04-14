@@ -45,6 +45,9 @@ node test/simple-direct-test.js
 
 # Test with detailed output
 node test/debug-server-output.js
+
+# Test the code tools
+node test/code-tools-test.js
 ```
 
 ## Available Methods
@@ -72,15 +75,74 @@ The server provides the following methods:
 
 ## Available Tools
 
-The server supports various code-related tools:
+The server supports various code-related tools that can be invoked through the Mercury API:
 
-- `analyze_code`: Analyze code for potential improvements
-- `refactor_code`: Refactor code according to best practices
-- `debug_code`: Debug code and suggest fixes
-- `generate_code`: Generate code from detailed instructions
-- `format_code`: Format code according to language standards
-- `convert_code`: Convert code between programming languages
-- `document_code`: Generate code documentation
+### Code Analysis and Improvement
+
+- **analyze_code**: Analyzes code for potential improvements and issues
+  ```javascript
+  {
+    "code": "your code here",
+    "language": "javascript"
+  }
+  ```
+
+- **refactor_code**: Refactors code according to best practices
+  ```javascript
+  {
+    "code": "your code here",
+    "language": "javascript",
+    "instructions": "Optional specific refactoring instructions"
+  }
+  ```
+
+- **debug_code**: Debugs code and suggests fixes
+  ```javascript
+  {
+    "code": "your code here",
+    "language": "javascript",
+    "error": "Optional error message or issue description"
+  }
+  ```
+
+### Code Generation and Transformation
+
+- **generate_code**: Generates code from detailed instructions
+  ```javascript
+  {
+    "instructions": "Detailed code generation instructions",
+    "language": "javascript",
+    "template": "Optional starting point template"
+  }
+  ```
+
+- **format_code**: Formats code according to language standards
+  ```javascript
+  {
+    "code": "your code here",
+    "language": "javascript",
+    "style": "Optional formatting style (e.g., 'prettier', 'google')"
+  }
+  ```
+
+- **convert_code**: Converts code between programming languages
+  ```javascript
+  {
+    "code": "your code here",
+    "language": "javascript",
+    "targetLanguage": "python"
+  }
+  ```
+
+- **document_code**: Generates code documentation
+  ```javascript
+  {
+    "code": "your code here",
+    "language": "javascript",
+    "style": "Optional documentation style (e.g., 'jsdoc', 'google')",
+    "format": "markdown" // Optional: 'markdown', 'jsdoc', or 'javadoc'
+  }
+  ```
 
 ## License
 

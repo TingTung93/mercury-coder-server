@@ -18,6 +18,7 @@ export interface LocalTool {
 // --- Concrete Tool Implementations ---
 // (Import them here and add to the array below)
 import { ReadFileTool } from "./readFileTool.js";
+import { getAllCodeTools } from "./codeTools/index.js";
 
 // Function to get all available tools
 // This is imported by index.ts and toolDispatcher.ts
@@ -25,7 +26,8 @@ export function getAvailableTools(): LocalTool[] {
     // Add instances of your implemented tools here
     const tools: LocalTool[] = [
         new ReadFileTool(),
-        // TODO: Add other tools like EditFileTool, RunCommandTool etc.
+        // Add all code-related tools
+        ...getAllCodeTools()
     ];
 
     // Return the mock tools for now until real ones are implemented
