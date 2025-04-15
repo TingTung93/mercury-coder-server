@@ -1,24 +1,39 @@
 # Mercury Coder Server
 
-The Mercury Coder Server provides code analysis, refactoring, and generation services through the Model Context Protocol (MCP).
+[![License: Fair Use](https://img.shields.io/badge/License-Fair%20Use-blue.svg)](LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue.svg)](https://www.typescriptlang.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-18.x-green.svg)](https://nodejs.org/)
 
-## Setup
+The Mercury Coder Server provides code analysis, refactoring, and generation services through the Model Context Protocol (MCP). It offers a powerful set of tools for code improvement, analysis, and transformation through a standardized JSON-RPC interface.
 
-1. Install dependencies:
+## Prerequisites
+
+- Node.js (v18.x or higher)
+- npm (v8.x or higher)
+- A Mercury API key (sign up at https://api.inceptionlabs.ai)
+
+## Installation
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/mercury-coder-server.git
+   cd mercury-coder-server
+   ```
+
+2. Install dependencies:
    ```bash
    npm install
    ```
 
-2. Build the server:
+3. Set up your environment:
+   ```bash
+   cp .env.example .env
+   ```
+   Edit `.env` and add your Mercury API key.
+
+4. Build the server:
    ```bash
    npm run build
-   ```
-
-3. Set up your Mercury API key:
-   ```bash
-   export MERCURY_API_KEY=your_api_key  # Unix/macOS
-   set MERCURY_API_KEY=your_api_key  # Windows cmd
-   $env:MERCURY_API_KEY="your_api_key"  # Windows PowerShell
    ```
 
 ## Running the Server
@@ -40,6 +55,9 @@ The server accepts requests over standard input and provides responses over stan
 You can test the server functionality using the provided test scripts:
 
 ```bash
+# Run all tests
+npm test
+
 # Test the simple server implementation
 node test/simple-direct-test.js
 
@@ -143,6 +161,10 @@ The server supports various code-related tools that can be invoked through the M
     "format": "markdown" // Optional: 'markdown', 'jsdoc', or 'javadoc'
   }
   ```
+
+## Contributing
+
+We welcome contributions! Please read our [Contributing Guidelines](CONTRIBUTING.md) for details on how to submit pull requests, report issues, and contribute to the project.
 
 ## License
 
