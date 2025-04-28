@@ -5,6 +5,11 @@ import { ToolDispatcher } from "./toolDispatcher.js"; // Added .js extension
 import { LocalTool } from "./local_tools/index.js"; // Changed to local_tools and added .js extension
 import { gzip } from "zlib";
 import { promisify } from "util";
+import OpenAI from "openai";
+import dotenv from "dotenv";
+
+// Initialize dotenv to load environment variables
+dotenv.config();
 
 const gzipAsync = promisify(gzip);
 
@@ -37,9 +42,69 @@ interface ApiResponse {
     // other fields like usage...
 }
 
+interface MercuryClientOptions {
+    apiKey?: string;
+    baseURL?: string;
+    defaultModel?: string;
+    defaultMaxTokens?: number;
+}
+
+export class MercuryClient {
+    private client: OpenAI;
+    private defaultModel: string;
+    private defaultMaxTokens: number;
+
+    constructor(options: MercuryClientOptions = {}) {
+        const apiKey = options.apiKey || process.env.MERCURY_API_KEY || API_CONFIG.KEY;
+        
+        if (!apiKey) {
+            throw new Error('API key is required. Provide it in options or set MERCURY_API_KEY environment variable.');
+        }
+
+        this.client = new OpenAI({
+            apiKey,
+            baseURL: options.baseURL || process.env.MERCURY_API_URL || 'https://api.inceptionlabs.ai/v1'
+        });
+
+        this.defaultModel = options.defaultModel || process.env.MERCURY_MODEL || API_CONFIG.MODEL;
+        this.defaultMaxTokens = options.defaultMaxTokens || API_CONFIG.MAX_TOKENS;
+    }
+
+    async generateCompletion(
+        messages: OpenAI.Chat.ChatCompletionMessageParam[], 
+        options: Partial<OpenAI.Chat.ChatCompletionCreateParams> = {}
+    ) {
+        try {
+            const response = await this.client.chat.completions.create({
+                model: options.model || this.defaultModel,
+                messages,
+                max_tokens: options.max_tokens || this.defaultMaxTokens,
+                ...options
+            });
+            
+            return response;
+        } catch (error) {
+            console.error('Error generating completion:', error);
+            if (error instanceof OpenAI.APIError) {
+                throw new McpError(
+                    ErrorCode.InternalError,
+                    `API request failed: ${error.message}`,
+                    { status: error.status }
+                );
+            }
+            throw error;
+        }
+    }
+}
+
 export class MercuryApi {
     private systemPrompt = "You are a helpful AI coding assistant. You can use tools to help the user."; // TODO: Make configurable?
     private maxToolIterations = 5; // Limit recursive tool calls
+    private mercuryClient: MercuryClient;
+
+    constructor() {
+        this.mercuryClient = new MercuryClient();
+    }
 
     /**
      * Primary method to interact with the Mercury API, handling the tool execution loop.
@@ -63,53 +128,72 @@ export class MercuryApi {
             { role: "user", content: userMessage }
         ];
 
-        // Prepare tool definitions for the API call
+        // Prepare tool definitions for the API call - cast to proper OpenAI SDK type
         const toolDefinitions = availableTools.map(tool => ({
-            type: "function",
+            type: "function" as const,  // Use const assertion to make this a literal type
             function: tool.getDefinition()
-        }));
+        })) as OpenAI.Chat.ChatCompletionTool[];
 
         let iteration = 0;
         while (iteration < this.maxToolIterations) {
             iteration++;
             reportProgress(`Sending request to AI (Iteration ${iteration})...`);
 
-            const requestBody = {
-                model: API_CONFIG.MODEL,
-                messages: messages,
-                tools: toolDefinitions,
-                tool_choice: "auto", // Or specific tool choice if needed
-                max_tokens: API_CONFIG.MAX_TOKENS,
-            };
-
             try {
-                const apiResponse: ApiResponse = await this.makeApiRequest(requestBody);
+                // Convert our ApiMessage[] to OpenAI's expected format
+                const openAIMessages = messages.map(msg => {
+                    return {
+                        role: msg.role,
+                        content: msg.content,
+                        ...(msg.tool_call_id ? { tool_call_id: msg.tool_call_id } : {}),
+                        ...(msg.tool_calls ? { tool_calls: msg.tool_calls } : {})
+                    } as OpenAI.Chat.ChatCompletionMessageParam;
+                });
 
-                if (!apiResponse.choices || apiResponse.choices.length === 0) {
+                // Use the OpenAI-compatible client
+                const apiResponse = await this.mercuryClient.generateCompletion(
+                    openAIMessages,
+                    {
+                        tools: toolDefinitions,
+                        tool_choice: "auto"
+                    }
+                );
+
+                // Add type assertion for apiResponse
+                const chatCompletion = apiResponse as OpenAI.Chat.ChatCompletion;
+
+                if (!chatCompletion.choices || chatCompletion.choices.length === 0) {
                     throw new Error("Invalid response from API: No choices found.");
                 }
 
-                const responseMessage = apiResponse.choices[0].message;
-                const finishReason = apiResponse.choices[0].finish_reason;
+                const responseMessage = chatCompletion.choices[0].message;
+                const finishReason = chatCompletion.choices[0].finish_reason;
+
+                // Convert OpenAI message back to our internal format
+                const adaptedMessage: ApiMessage = {
+                    role: responseMessage.role as "assistant", // Type assertion for role
+                    content: responseMessage.content !== null ? responseMessage.content : null,
+                    tool_calls: responseMessage.tool_calls as unknown as ApiToolCall[] | undefined
+                };
 
                 // Add AI response to message history
-                messages.push(responseMessage);
+                messages.push(adaptedMessage);
 
-                if (finishReason === "stop" || !responseMessage.tool_calls || responseMessage.tool_calls.length === 0) {
+                if (finishReason === "stop" || !adaptedMessage.tool_calls || adaptedMessage.tool_calls.length === 0) {
                     reportProgress("AI finished generating response.");
                     // No tool calls, or explicit stop, return the content
-                    if (responseMessage.content === null) {
+                    if (adaptedMessage.content === null) {
                         // This can happen if the AI *only* decides to call tools and provides no text
                         // Might need a follow-up call asking for a summary, or handle this case differently.
                         console.warn("AI response finished with tool calls but no final text content.");
                         return { content: "" }; // Return empty or ask AI for final words?
                     }
-                    return { content: responseMessage.content };
+                    return { content: adaptedMessage.content };
                 }
 
                 // --- Handle Tool Calls ---
                 reportProgress("AI requested tool execution...");
-                const toolCalls = responseMessage.tool_calls;
+                const toolCalls = adaptedMessage.tool_calls;
                 const toolResults: ApiMessage[] = [];
 
                 for (const toolCall of toolCalls) {

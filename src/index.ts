@@ -315,3 +315,47 @@ server.run().catch((error) => {
 // Keep export if needed elsewhere, otherwise remove if entry point only
 // export { MercuryCoderServer };
 
+/**
+ * Example usage of the MercuryClient standalone
+ * This shows how to use the Mercury API directly with an OpenAI-compatible interface
+ */
+export function createMercuryClient(options: {
+    apiKey?: string;
+    baseURL?: string;
+    model?: string;
+    maxTokens?: number;
+}) {
+    const { MercuryClient } = require('./mercuryApi.js');
+    return new MercuryClient({
+        apiKey: options.apiKey,
+        baseURL: options.baseURL || 'https://api.inceptionlabs.ai/v1',
+        defaultModel: options.model || 'mercury-coder-small',
+        defaultMaxTokens: options.maxTokens || 1000
+    });
+}
+
+/**
+ * Example of using the Mercury API with the OpenAI-compatible interface
+ */
+export async function exampleMercuryClientUsage() {
+    const { MercuryClient } = require('./mercuryApi.js');
+    
+    // Initialize the client
+    const mercuryClient = new MercuryClient();
+
+    try {
+        // Generate a completion
+        const response = await mercuryClient.generateCompletion([
+            { role: 'user', content: 'What is a diffusion model?' }
+        ], {
+            max_tokens: 100
+        });
+        
+        console.log(response.choices[0]?.message.content);
+        return response;
+    } catch (error) {
+        console.error('Failed to get response:', error);
+        throw error;
+    }
+}
+

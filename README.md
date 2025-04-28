@@ -6,6 +6,13 @@
 
 The Mercury Coder Server provides code analysis, refactoring, and generation services through the Model Context Protocol (MCP). It offers a powerful set of tools for code improvement, analysis, and transformation through a standardized JSON-RPC interface.
 
+## Features
+
+- OpenAI-compatible client interface
+- Support for Mercury's AI coding capabilities
+- Tool-handling for interactive coding assistance
+- Flexible configuration through environment variables or client options
+
 ## Prerequisites
 
 - Node.js (v18.x or higher)
@@ -36,36 +43,84 @@ The Mercury Coder Server provides code analysis, refactoring, and generation ser
    npm run build
    ```
 
-## Running the Server
+## Environment Variables
 
-To run the primary server implementation:
-```bash
-node build/index.js
+Configure these environment variables or pass them as client options:
+
+```
+MERCURY_API_KEY=your_api_key_here
+MERCURY_API_URL=https://api.inceptionlabs.ai/v1
+MERCURY_MODEL=mercury-coder-small
 ```
 
-To run the simplified server implementation:
-```bash
-node build/src/simple-server.js
+## Usage
+
+### Basic OpenAI-compatible Client
+
+```typescript
+import { MercuryClient } from './src/mercuryApi.js';
+
+// Configure client
+const mercury = new MercuryClient({
+  apiKey: 'your-api-key', // Optional: Defaults to MERCURY_API_KEY env variable
+  baseURL: 'https://api.inceptionlabs.ai/v1', // Optional: Custom API endpoint
+  defaultModel: 'mercury-coder-small', // Optional: Model to use
+  defaultMaxTokens: 1000 // Optional: Default token limit
+});
+
+// Generate completions
+async function main() {
+  try {
+    const response = await mercury.generateCompletion([
+      { role: 'user', content: 'What is a diffusion model?' }
+    ], {
+      max_tokens: 100,
+      // Additional OpenAI parameters can be passed here
+    });
+    
+    console.log(response.choices[0]?.message.content);
+  } catch (error) {
+    console.error('Failed to get response:', error);
+  }
+}
+
+main();
 ```
 
-The server accepts requests over standard input and provides responses over standard output, following the JSON-RPC 2.0 protocol.
+### Helper Function (Alternative)
 
-## Testing
+```typescript
+import { createMercuryClient } from './src/index.js';
 
-You can test the server functionality using the provided test scripts:
+const mercury = createMercuryClient({
+  apiKey: 'your-api-key',
+  model: 'mercury-coder-small'
+});
+
+// Use the client as in the previous example
+```
+
+## Server Mode
+
+The Mercury Coder Server also supports running as a standalone MCP (Model Context Protocol) server:
 
 ```bash
-# Run all tests
+npm start
+```
+
+This starts the server in standard stdio mode suitable for integration with MCP clients.
+
+## Development
+
+```bash
+# Build the project
+npm run build
+
+# Run tests
 npm test
 
-# Test the simple server implementation
-node test/simple-direct-test.js
-
-# Test with detailed output
-node test/debug-server-output.js
-
-# Test the code tools
-node test/code-tools-test.js
+# Run in development mode with auto-restart
+npm run dev
 ```
 
 ## Available Methods
@@ -161,6 +216,57 @@ The server supports various code-related tools that can be invoked through the M
     "format": "markdown" // Optional: 'markdown', 'jsdoc', or 'javadoc'
   }
   ```
+
+## MCP-Specific Tools
+
+The MCP server provides additional special tools for directly interacting with the Mercury API:
+
+### mcp_complete
+
+A simple tool for making direct completion requests:
+
+```javascript
+{
+  "prompt": "What is a diffusion model?",
+  "model": "mercury-coder-small", // Optional
+  "max_tokens": 100, // Optional
+  "temperature": 0.7, // Optional (0-2)
+  "system_prompt": "You are a helpful AI assistant" // Optional
+}
+```
+
+### mcp_api_client
+
+A more advanced tool that provides full control over chat history and supports multi-turn conversations:
+
+```javascript
+{
+  "messages": [
+    { "role": "system", "content": "You are a helpful assistant." },
+    { "role": "user", "content": "What is a diffusion model?" },
+    { "role": "assistant", "content": "A diffusion model is..." },
+    { "role": "user", "content": "Can you elaborate more?" }
+  ],
+  "model": "mercury-coder-small", // Optional
+  "max_tokens": 150, // Optional
+  "temperature": 0.7, // Optional
+  "full_response": true // Optional: Returns the full API response instead of just content
+}
+```
+
+### Using the MCP Tools in Claude
+
+Example of using the tools in Claude Desktop:
+
+1. Invoke the `mcp_complete` tool:
+```
+I need to understand diffusion models.
+```
+
+2. Use the `mcp_api_client` tool for a multi-turn conversation:
+```
+Let's continue our previous conversation about diffusion models.
+```
 
 ## Contributing
 
